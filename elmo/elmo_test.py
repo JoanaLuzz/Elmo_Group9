@@ -1,36 +1,23 @@
-import datetime
 import sys
 import time
-import threading
-import json
-import os
+import threading 
 from ElmoV2API import ElmoV2API
-from eye_tracker import EyeTracker
+from eye_tracking import EyeTracker
+
+# Removed imports: datetime, json, os (no longer needed for logging)
 
 def monitor_attention(robot, tracker, stop_event):
     """
-    Monitors user attention, controls the robot, and logs data to JSON.
+    Monitors user attention and controls the robot.
+    Logging logic has been removed.
+    
     Behavior:
     - Focused: Normal eyes, Head center.
     - Distracted OR Zoning Out: Sad eyes, Head down, Sad sound.
     - Recovery: Happy eyes + Sound -> Normal.
     """
-    print(" -> [Thread] Vigilance started (JSON Logging enabled).")
+    print(" -> [Thread] Vigilance started (No Logging).")
     current_mood = "normal"
-    
-    # --- CREATE LOGS FOLDER ---
-    folder_name = "logs_robot"
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-        print(f" -> [Info] Folder '{folder_name}' created.")
-
-    timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Save inside logs_robot folder
-    filename = os.path.join(folder_name, f"robot_session_{timestamp_str}.json")
-    # ------------------------------------
-    
-    # Log buffer
-    session_data = []
     
     # Initial Robot State
     try:
@@ -51,7 +38,6 @@ def monitor_attention(robot, tracker, stop_event):
         while not stop_event.is_set():
             is_looking = tracker.is_focused()
             current_ratio = tracker.get_iris_ratio()
-            current_time = datetime.datetime.now().strftime("%H:%M:%S")
             
             # Zoning Out Calculation
             gaze_history.append(current_ratio)
@@ -64,21 +50,6 @@ def monitor_attention(robot, tracker, stop_event):
                 variation = max(gaze_history) - min(gaze_history)
                 if variation < 0.015: 
                     is_zoning_out = True
-
-            # --- JSON LOGGING ---
-            state_log = "FOCUSED"
-            if is_zoning_out: state_log = "ZONING_OUT"
-            elif not is_looking: state_log = "DISTRACTED"
-
-            entry = {
-                "timestamp": current_time,
-                "iris_ratio": round(current_ratio, 4),
-                "state": state_log,
-                "variation_5s": round(variation, 4),
-                "robot_mood": current_mood
-            }
-            session_data.append(entry)
-            # --------------------
 
             # --- ROBOT LOGIC ---
             # User is failing if they are distracted OR zoning out
@@ -124,18 +95,12 @@ def monitor_attention(robot, tracker, stop_event):
                         current_mood = "normal"
                     count_good = STABILITY_LIMIT
 
-            print(f" -> Log: {len(session_data)} | Eye: {current_ratio:.3f} | Var: {variation:.3f}   ", end='\r')
+            # Updated print to remove log count
+            print(f" -> Eye: {current_ratio:.3f} | Var: {variation:.3f}   ", end='\r')
             time.sleep(0.5)
 
     finally:
-        # SAVE JSON AT END
-        print(f"\n -> [Saving] Writing log to {filename}...")
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(session_data, f, indent=4)
-            print(f" -> [Success] JSON Log saved.")
-        except Exception as e:
-            print(f" -> [Error] Failed to save JSON: {e}")
+        print("\n -> [Thread] Vigilance stopped.")
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -143,7 +108,7 @@ if __name__ == '__main__':
         print("Usage: python elmo_test.py <ROBOT_IP>")
         sys.exit(1)
 
-    print("--- CONNECTING TO ROBOT (EYE TRACKING STUDY) ---")
+    print("--- CONNECTING TO ROBOT (EYE TRACKING STUDY - NO LOGS) ---")
     
     # 1. INITIALIZE ROBOT
     try:

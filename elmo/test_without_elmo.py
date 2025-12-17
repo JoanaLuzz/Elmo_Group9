@@ -1,30 +1,14 @@
 import time
 import threading
-import json
-import datetime
-import os
-from eye_tracker import EyeTracker
+from eye_tracking import EyeTracker
 
-def log_session(tracker, stop_event):
+# Removed imports: json, datetime, os (no longer needed for logging)
+
+def monitor_session(tracker, stop_event):
     """
-    Monitors attention and saves data to a JSON file.
-    Does NOT send commands to the robot.
+    Monitors attention and prints state to console.
     """
-    print(" -> [System] Registration session started (JSON Mode).")
-    
-    # --- CREATE LOGS FOLDER ---
-    folder_name = "logs_control"
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-        print(f" -> [Info] Folder '{folder_name}' created.")
-    
-    timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Save inside logs_control folder
-    filename = os.path.join(folder_name, f"study_session_{timestamp_str}.json")
-    # ------------------------------------
-    
-    # List to store all data in memory before saving
-    session_data = []
+    print(" -> [System] Monitoring session started (No Logging).")
     
     # Variables for detecting Zoning Out
     gaze_history = [] 
@@ -35,7 +19,6 @@ def log_session(tracker, stop_event):
             # A. Collect data
             is_looking = tracker.is_focused()
             current_ratio = tracker.get_iris_ratio()
-            current_time = datetime.datetime.now().strftime("%H:%M:%S")
             
             # B. Calculate Zoning Out
             gaze_history.append(current_ratio)
@@ -59,44 +42,28 @@ def log_session(tracker, stop_event):
             elif not is_looking:
                 state = "DISTRACTED"
 
-            # D. Create data object (Dictionary)
-            entry = {
-                "timestamp": current_time,
-                "iris_ratio": round(current_ratio, 4),
-                "state": state,
-                "variation_5s": round(variation, 4)
-            }
-            
-            # Add to list
-            session_data.append(entry)
-            
-            # E. Feedback on screen
-            print(f" -> Buffer: {len(session_data)} records | State: {state} | Var: {variation:.3f}   ", end='\r')
+            # D. Feedback on screen (No dictionary storage)
+            print(f" -> State: {state} | Var: {variation:.3f} | Eye: {current_ratio:.3f}   ", end='\r')
 
             time.sleep(0.5)
 
     finally:
-        # F. SAVE JSON FILE AT THE END
-        print(f"\n -> [Saving] Writing {len(session_data)} records to {filename}...")
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(session_data, f, indent=4)
-            print(f" -> [Success] File saved successfully!")
-        except Exception as e:
-            print(f" -> [Error] Failed to save JSON: {e}")
+        # Stop message (No file writing)
+        print("\n -> [System] Monitoring stopped.")
 
 if __name__ == '__main__':
-    print("--- ATTENTION LOGGER (NO ROBOT) ---")
+    print("--- ATTENTION MONITOR (NO ROBOT / NO LOGS) ---")
     
     print(" -> Starting Webcam...")
     tracker = EyeTracker()
     tracker.start()
     
     stop_event = threading.Event()
-    logger_thread = threading.Thread(target=log_session, args=(tracker, stop_event))
-    logger_thread.start()
+    # Renamed function to reflect it just monitors, doesn't log
+    monitor_thread = threading.Thread(target=monitor_session, args=(tracker, stop_event))
+    monitor_thread.start()
     
-    print("--- RECORDING DATA TO JSON ---")
+    print("--- MONITORING ACTIVE ---")
     print("Press CTRL+C to end the session.")
 
     try:
@@ -109,5 +76,5 @@ if __name__ == '__main__':
     finally:
         stop_event.set()
         tracker.stop()
-        logger_thread.join()
+        monitor_thread.join()
         print("--- DONE ---")
